@@ -23,9 +23,9 @@ type BoardService interface {
 
 // boardService BoardServiceの実装
 type boardService struct {
-	boardRepo  repository.BoardRepository
-	columnRepo repository.ColumnRepository // カラムリポジトリ（作成予定）
-	db         *gorm.DB
+	boardRepo  repository.BoardRepository  // ボードリポジトリ
+	columnRepo repository.ColumnRepository //nolint:unused // カラムリポジトリ（作成予定）
+	db         *gorm.DB                    // データベース接続
 }
 
 // NewBoardService BoardServiceの新しいインスタンスを作成

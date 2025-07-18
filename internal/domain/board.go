@@ -19,7 +19,7 @@ type Board struct {
 
 	// リレーション：このボードの所有者
 	Owner User `json:"owner,omitempty" gorm:"foreignKey:OwnerID"`
-	
+
 	// リレーション：このボードが持つカラム一覧（order順でソート）
 	Columns []Column `json:"columns,omitempty" gorm:"foreignKey:BoardID;constraint:OnDelete:CASCADE"`
 }
@@ -27,4 +27,4 @@ type Board struct {
 // TableName テーブル名を明示的に指定
 func (Board) TableName() string {
 	return "boards"
-} 
+}

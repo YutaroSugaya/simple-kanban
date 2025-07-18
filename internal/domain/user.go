@@ -24,4 +24,4 @@ type User struct {
 // TableName テーブル名を明示的に指定
 func (User) TableName() string {
 	return "users"
-} 
+}

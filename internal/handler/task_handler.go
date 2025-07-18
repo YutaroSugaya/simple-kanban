@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -13,6 +15,33 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
+
+// デバッグ用のヘルパー関数
+func debugLog(format string, args ...interface{}) {
+	if gin.Mode() == gin.DebugMode {
+		log.Printf("[DEBUG] "+format, args...)
+	}
+}
+
+func debugRequest(c *gin.Context, data interface{}) {
+	if gin.Mode() == gin.DebugMode {
+		jsonData, _ := json.MarshalIndent(data, "", "  ")
+		log.Printf("[DEBUG] %s %s - Data: %s",
+			c.Request.Method,
+			c.Request.URL.Path,
+			string(jsonData))
+	}
+}
+
+func debugError(c *gin.Context, err error, context string) {
+	if gin.Mode() == gin.DebugMode {
+		log.Printf("[DEBUG] %s %s - Error in %s: %v",
+			c.Request.Method,
+			c.Request.URL.Path,
+			context,
+			err)
+	}
+}
 
 // TaskHandler タスク関連のHTTPハンドラ
 type TaskHandler struct {
@@ -40,10 +69,10 @@ type CreateTaskRequest struct {
 
 // UpdateTaskRequest タスク更新リクエスト構造体
 type UpdateTaskRequest struct {
-	Title       *string    `json:"title" validate:"omitempty,min=1,max=100"`
-	Description *string    `json:"description"`
-	AssigneeID  *string    `json:"assignee_id"`
-	DueDate     *time.Time `json:"due_date"`
+	Title       *string `json:"title" validate:"omitempty,min=1,max=100"`
+	Description *string `json:"description"`
+	AssigneeID  *string `json:"assignee_id"`
+	DueDate     *string `json:"due_date"`
 }
 
 // MoveTaskRequest タスク移動リクエスト構造体
@@ -169,37 +198,55 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 // UpdateTask タスク更新ハンドラ
 // PUT /api/v1/tasks/:id
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
+	debugLog("UpdateTask開始")
+
 	// JWT認証ミドルウェアからユーザーIDを取得
 	userID, err := middleware.GetUserIDFromContext(c)
 	if err != nil {
+		debugError(c, err, "ユーザーID取得")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "認証情報が取得できません",
 		})
 		return
 	}
 
+	debugLog("認証成功 - ユーザーID: %s", userID)
+
 	// パスパラメータからタスクIDを取得
 	taskIDStr := c.Param("id")
 	taskID, err := strconv.ParseUint(taskIDStr, 10, 32)
 	if err != nil {
+		debugError(c, err, "タスクIDパース")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "不正なタスクIDです",
 		})
 		return
 	}
 
+	debugLog("タスクID: %d", taskID)
+
 	var req UpdateTaskRequest
 
 	// リクエストボディをバインド
 	if err := c.ShouldBindJSON(&req); err != nil {
+		// デバッグ用：リクエストボディを出力
+		if gin.Mode() == gin.DebugMode {
+			body, _ := c.GetRawData()
+			log.Printf("[DEBUG] Raw request body: %s", string(body))
+		}
+		debugError(c, err, "JSONバインド")
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "不正なリクエスト形式です",
+			"error":   "不正なリクエスト形式です",
+			"details": err.Error(),
 		})
 		return
 	}
 
+	debugRequest(c, req)
+
 	// バリデーション
 	if err := h.validator.Struct(req); err != nil {
+		debugError(c, err, "バリデーション")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "バリデーションエラー",
 			"details": err.Error(),
@@ -211,29 +258,54 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	updates := make(map[string]interface{})
 	if req.Title != nil {
 		updates["title"] = *req.Title
+		debugLog("タイトル更新: %s", *req.Title)
 	}
 	if req.Description != nil {
 		updates["description"] = *req.Description
+		debugLog("説明更新: %s", *req.Description)
 	}
 	if req.AssigneeID != nil {
 		if *req.AssigneeID == "" {
 			updates["assignee_id"] = nil
+			debugLog("担当者をクリア")
 		} else {
 			updates["assignee_id"] = *req.AssigneeID
+			debugLog("担当者更新: %s", *req.AssigneeID)
 		}
 	}
 	if req.DueDate != nil {
-		updates["due_date"] = req.DueDate
+		if *req.DueDate == "" {
+			// 空文字列の場合はnullに設定
+			updates["due_date"] = nil
+			debugLog("期限日をクリア")
+		} else {
+			// 文字列をtime.Time型に変換（YYYY-MM-DD形式）
+			parsed, err := time.Parse("2006-01-02", *req.DueDate)
+			if err != nil {
+				debugError(c, err, "日付パース")
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "不正な期限日の形式です（YYYY-MM-DD形式で入力してください）",
+				})
+				return
+			}
+			updates["due_date"] = parsed
+			debugLog("期限日更新: %s", parsed.Format("2006-01-02"))
+		}
 	}
+
+	debugLog("更新データ: %+v", updates)
 
 	// タスク更新処理
 	task, err := h.taskService.UpdateTask(uint(taskID), userID, updates)
 	if err != nil {
+		debugError(c, err, "タスク更新")
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
+
+	debugLog("タスク更新成功: %+v", task)
 
 	// レスポンスを構築
 	response := h.buildTaskResponse(task)

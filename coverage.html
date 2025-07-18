@@ -1,0 +1,1102 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>handler: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">simple-kanban/internal/handler/auth_handler.go (0.0%)</option>
+				
+				<option value="file1">simple-kanban/internal/handler/board_handler.go (0.0%)</option>
+				
+				<option value="file2">simple-kanban/internal/handler/task_handler.go (27.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package handler
+
+import (
+        "net/http"
+
+        "simple-kanban/internal/service"
+        "simple-kanban/pkg/middleware"
+
+        "github.com/gin-gonic/gin"
+        "github.com/go-playground/validator/v10"
+)
+
+// AuthHandler 認証関連のHTTPハンドラ
+type AuthHandler struct {
+        userService service.UserService
+        validator   *validator.Validate
+}
+
+// NewAuthHandler AuthHandlerの新しいインスタンスを作成
+func NewAuthHandler(userService service.UserService) *AuthHandler <span class="cov0" title="0">{
+        return &amp;AuthHandler{
+                userService: userService,
+                validator:   validator.New(),
+        }
+}</span>
+
+// RegisterRequest ユーザー登録リクエスト構造体
+type RegisterRequest struct {
+        Email    string `json:"email" validate:"required,email"`
+        Password string `json:"password" validate:"required,min=8"`
+}
+
+// LoginRequest ログインリクエスト構造体
+type LoginRequest struct {
+        Email    string `json:"email" validate:"required,email"`
+        Password string `json:"password" validate:"required"`
+}
+
+// AuthResponse 認証レスポンス構造体
+type AuthResponse struct {
+        User  UserResponse `json:"user"`
+        Token string       `json:"token"`
+}
+
+// UserResponse ユーザー情報レスポンス構造体
+type UserResponse struct {
+        ID    string `json:"id"`
+        Email string `json:"email"`
+}
+
+// Register ユーザー登録ハンドラ
+// POST /api/v1/auth/register
+func (h *AuthHandler) Register(c *gin.Context) <span class="cov0" title="0">{
+        var req RegisterRequest
+
+        // リクエストボディをバインド
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なリクエスト形式です",
+                })
+                return
+        }</span>
+
+        // バリデーション
+        <span class="cov0" title="0">if err := h.validator.Struct(req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error":   "バリデーションエラー",
+                        "details": err.Error(),
+                })
+                return
+        }</span>
+
+        // ユーザー登録処理
+        <span class="cov0" title="0">user, token, err := h.userService.Register(req.Email, req.Password)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        // レスポンスを返す
+        <span class="cov0" title="0">response := AuthResponse{
+                User: UserResponse{
+                        ID:    user.ID.String(),
+                        Email: user.Email,
+                },
+                Token: token,
+        }
+
+        c.JSON(http.StatusCreated, response)</span>
+}
+
+// Login ログインハンドラ
+// POST /api/v1/auth/login
+func (h *AuthHandler) Login(c *gin.Context) <span class="cov0" title="0">{
+        var req LoginRequest
+
+        // リクエストボディをバインド
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なリクエスト形式です",
+                })
+                return
+        }</span>
+
+        // バリデーション
+        <span class="cov0" title="0">if err := h.validator.Struct(req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error":   "バリデーションエラー",
+                        "details": err.Error(),
+                })
+                return
+        }</span>
+
+        // ログイン処理
+        <span class="cov0" title="0">user, token, err := h.userService.Login(req.Email, req.Password)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        // レスポンスを返す
+        <span class="cov0" title="0">response := AuthResponse{
+                User: UserResponse{
+                        ID:    user.ID.String(),
+                        Email: user.Email,
+                },
+                Token: token,
+        }
+
+        c.JSON(http.StatusOK, response)</span>
+}
+
+// Profile ユーザープロフィール取得ハンドラ
+// GET /api/v1/auth/profile
+func (h *AuthHandler) Profile(c *gin.Context) <span class="cov0" title="0">{
+        // JWT認証ミドルウェアからユーザーIDを取得
+        userID, err := middleware.GetUserIDFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "error": "認証情報が取得できません",
+                })
+                return
+        }</span>
+
+        // ユーザー情報を取得
+        <span class="cov0" title="0">user, err := h.userService.GetProfile(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        // レスポンスを返す
+        <span class="cov0" title="0">response := UserResponse{
+                ID:    user.ID.String(),
+                Email: user.Email,
+        }
+
+        c.JSON(http.StatusOK, gin.H{
+                "user": response,
+        })</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package handler
+
+import (
+        "net/http"
+        "strconv"
+        "time"
+
+        "simple-kanban/internal/service"
+        "simple-kanban/pkg/middleware"
+
+        "github.com/gin-gonic/gin"
+        "github.com/go-playground/validator/v10"
+)
+
+// BoardHandler ボード関連のHTTPハンドラ
+type BoardHandler struct {
+        boardService service.BoardService
+        validator    *validator.Validate
+}
+
+// NewBoardHandler BoardHandlerの新しいインスタンスを作成
+func NewBoardHandler(boardService service.BoardService) *BoardHandler <span class="cov0" title="0">{
+        return &amp;BoardHandler{
+                boardService: boardService,
+                validator:    validator.New(),
+        }
+}</span>
+
+// CreateBoardRequest ボード作成リクエスト構造体
+type CreateBoardRequest struct {
+        Name string `json:"name" validate:"required,min=1,max=100"`
+}
+
+// UpdateBoardRequest ボード更新リクエスト構造体
+type UpdateBoardRequest struct {
+        Name string `json:"name" validate:"required,min=1,max=100"`
+}
+
+// BoardResponse ボード情報レスポンス構造体
+type BoardResponse struct {
+        ID        uint             `json:"id"`
+        Name      string           `json:"name"`
+        OwnerID   string           `json:"owner_id"`
+        CreatedAt time.Time        `json:"created_at"`
+        UpdatedAt time.Time        `json:"updated_at"`
+        Columns   []ColumnResponse `json:"columns,omitempty"`
+}
+
+// ColumnResponse カラム情報レスポンス構造体
+type ColumnResponse struct {
+        ID    uint           `json:"id"`
+        Title string         `json:"title"`
+        Order int            `json:"order"`
+        Tasks []TaskResponse `json:"tasks,omitempty"`
+}
+
+// TaskResponse タスク情報レスポンス構造体
+type TaskResponse struct {
+        ID          uint          `json:"id"`
+        Title       string        `json:"title"`
+        Description string        `json:"description"`
+        Order       int           `json:"order"`
+        AssigneeID  *string       `json:"assignee_id"`
+        Assignee    *UserResponse `json:"assignee,omitempty"`
+        DueDate     *time.Time    `json:"due_date"`
+        CreatedAt   time.Time     `json:"created_at"`
+        UpdatedAt   time.Time     `json:"updated_at"`
+}
+
+// CreateBoard ボード作成ハンドラ
+// POST /api/v1/boards
+func (h *BoardHandler) CreateBoard(c *gin.Context) <span class="cov0" title="0">{
+        // JWT認証ミドルウェアからユーザーIDを取得
+        userID, err := middleware.GetUserIDFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "error": "認証情報が取得できません",
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">var req CreateBoardRequest
+
+        // リクエストボディをバインド
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なリクエスト形式です",
+                })
+                return
+        }</span>
+
+        // バリデーション
+        <span class="cov0" title="0">if err := h.validator.Struct(req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error":   "バリデーションエラー",
+                        "details": err.Error(),
+                })
+                return
+        }</span>
+
+        // ボード作成処理
+        <span class="cov0" title="0">board, err := h.boardService.CreateBoard(userID, req.Name)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        // レスポンスを返す
+        <span class="cov0" title="0">response := BoardResponse{
+                ID:        board.ID,
+                Name:      board.Name,
+                OwnerID:   board.OwnerID.String(),
+                CreatedAt: board.CreatedAt,
+                UpdatedAt: board.UpdatedAt,
+        }
+
+        c.JSON(http.StatusCreated, gin.H{
+                "board": response,
+        })</span>
+}
+
+// GetUserBoards ユーザーのボード一覧取得ハンドラ
+// GET /api/v1/boards
+func (h *BoardHandler) GetUserBoards(c *gin.Context) <span class="cov0" title="0">{
+        // JWT認証ミドルウェアからユーザーIDを取得
+        userID, err := middleware.GetUserIDFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "error": "認証情報が取得できません",
+                })
+                return
+        }</span>
+
+        // ユーザーのボード一覧を取得
+        <span class="cov0" title="0">boards, err := h.boardService.GetUserBoards(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        // レスポンスを構築
+        <span class="cov0" title="0">var response []BoardResponse
+        for _, board := range boards </span><span class="cov0" title="0">{
+                response = append(response, BoardResponse{
+                        ID:        board.ID,
+                        Name:      board.Name,
+                        OwnerID:   board.OwnerID.String(),
+                        CreatedAt: board.CreatedAt,
+                        UpdatedAt: board.UpdatedAt,
+                })
+        }</span>
+
+        <span class="cov0" title="0">c.JSON(http.StatusOK, gin.H{
+                "boards": response,
+        })</span>
+}
+
+// GetBoardWithColumns ボードとカラム情報取得ハンドラ
+// GET /api/v1/boards/:id/columns
+func (h *BoardHandler) GetBoardWithColumns(c *gin.Context) <span class="cov0" title="0">{
+        // JWT認証ミドルウェアからユーザーIDを取得
+        userID, err := middleware.GetUserIDFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "error": "認証情報が取得できません",
+                })
+                return
+        }</span>
+
+        // パスパラメータからボードIDを取得
+        <span class="cov0" title="0">boardIDStr := c.Param("id")
+        boardID, err := strconv.ParseUint(boardIDStr, 10, 32)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なボードIDです",
+                })
+                return
+        }</span>
+
+        // ボードをカラム情報付きで取得
+        <span class="cov0" title="0">board, err := h.boardService.GetBoardWithColumns(uint(boardID), userID)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusForbidden, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        // レスポンスを構築
+        <span class="cov0" title="0">var columns []ColumnResponse
+        for _, column := range board.Columns </span><span class="cov0" title="0">{
+                var tasks []TaskResponse
+                for _, task := range column.Tasks </span><span class="cov0" title="0">{
+                        taskResponse := TaskResponse{
+                                ID:          task.ID,
+                                Title:       task.Title,
+                                Description: task.Description,
+                                Order:       task.Order,
+                                DueDate:     task.DueDate,
+                                CreatedAt:   task.CreatedAt,
+                                UpdatedAt:   task.UpdatedAt,
+                        }
+
+                        // 担当者情報が存在する場合は追加
+                        if task.AssigneeID != nil </span><span class="cov0" title="0">{
+                                assigneeIDStr := task.AssigneeID.String()
+                                taskResponse.AssigneeID = &amp;assigneeIDStr
+                        }</span>
+                        <span class="cov0" title="0">if task.Assignee != nil </span><span class="cov0" title="0">{
+                                taskResponse.Assignee = &amp;UserResponse{
+                                        ID:    task.Assignee.ID.String(),
+                                        Email: task.Assignee.Email,
+                                }
+                        }</span>
+
+                        <span class="cov0" title="0">tasks = append(tasks, taskResponse)</span>
+                }
+
+                <span class="cov0" title="0">columns = append(columns, ColumnResponse{
+                        ID:    column.ID,
+                        Title: column.Title,
+                        Order: column.Order,
+                        Tasks: tasks,
+                })</span>
+        }
+
+        <span class="cov0" title="0">response := BoardResponse{
+                ID:        board.ID,
+                Name:      board.Name,
+                OwnerID:   board.OwnerID.String(),
+                CreatedAt: board.CreatedAt,
+                UpdatedAt: board.UpdatedAt,
+                Columns:   columns,
+        }
+
+        c.JSON(http.StatusOK, gin.H{
+                "board": response,
+        })</span>
+}
+
+// UpdateBoard ボード更新ハンドラ
+// PUT /api/v1/boards/:id
+func (h *BoardHandler) UpdateBoard(c *gin.Context) <span class="cov0" title="0">{
+        // JWT認証ミドルウェアからユーザーIDを取得
+        userID, err := middleware.GetUserIDFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "error": "認証情報が取得できません",
+                })
+                return
+        }</span>
+
+        // パスパラメータからボードIDを取得
+        <span class="cov0" title="0">boardIDStr := c.Param("id")
+        boardID, err := strconv.ParseUint(boardIDStr, 10, 32)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なボードIDです",
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">var req UpdateBoardRequest
+
+        // リクエストボディをバインド
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なリクエスト形式です",
+                })
+                return
+        }</span>
+
+        // バリデーション
+        <span class="cov0" title="0">if err := h.validator.Struct(req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error":   "バリデーションエラー",
+                        "details": err.Error(),
+                })
+                return
+        }</span>
+
+        // ボード更新処理
+        <span class="cov0" title="0">updates := map[string]interface{}{
+                "name": req.Name,
+        }
+        board, err := h.boardService.UpdateBoard(uint(boardID), userID, updates)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusForbidden, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        // レスポンスを返す
+        <span class="cov0" title="0">response := BoardResponse{
+                ID:        board.ID,
+                Name:      board.Name,
+                OwnerID:   board.OwnerID.String(),
+                CreatedAt: board.CreatedAt,
+                UpdatedAt: board.UpdatedAt,
+        }
+
+        c.JSON(http.StatusOK, gin.H{
+                "board": response,
+        })</span>
+}
+
+// DeleteBoard ボード削除ハンドラ
+// DELETE /api/v1/boards/:id
+func (h *BoardHandler) DeleteBoard(c *gin.Context) <span class="cov0" title="0">{
+        // JWT認証ミドルウェアからユーザーIDを取得
+        userID, err := middleware.GetUserIDFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "error": "認証情報が取得できません",
+                })
+                return
+        }</span>
+
+        // パスパラメータからボードIDを取得
+        <span class="cov0" title="0">boardIDStr := c.Param("id")
+        boardID, err := strconv.ParseUint(boardIDStr, 10, 32)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なボードIDです",
+                })
+                return
+        }</span>
+
+        // ボード削除処理
+        <span class="cov0" title="0">if err := h.boardService.DeleteBoard(uint(boardID), userID); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusForbidden, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">c.JSON(http.StatusNoContent, nil)</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package handler
+
+import (
+        "encoding/json"
+        "log"
+        "net/http"
+        "strconv"
+        "time"
+
+        "simple-kanban/internal/domain"
+        "simple-kanban/internal/service"
+        "simple-kanban/pkg/middleware"
+
+        "github.com/gin-gonic/gin"
+        "github.com/go-playground/validator/v10"
+        "github.com/google/uuid"
+)
+
+// デバッグ用のヘルパー関数
+func debugLog(format string, args ...interface{}) <span class="cov8" title="1">{
+        if gin.Mode() == gin.DebugMode </span><span class="cov0" title="0">{
+                log.Printf("[DEBUG] "+format, args...)
+        }</span>
+}
+
+func debugRequest(c *gin.Context, data interface{}) <span class="cov8" title="1">{
+        if gin.Mode() == gin.DebugMode </span><span class="cov0" title="0">{
+                jsonData, _ := json.MarshalIndent(data, "", "  ")
+                log.Printf("[DEBUG] %s %s - Data: %s", 
+                        c.Request.Method, 
+                        c.Request.URL.Path, 
+                        string(jsonData))
+        }</span>
+}
+
+func debugError(c *gin.Context, err error, context string) <span class="cov8" title="1">{
+        if gin.Mode() == gin.DebugMode </span><span class="cov0" title="0">{
+                log.Printf("[DEBUG] %s %s - Error in %s: %v", 
+                        c.Request.Method, 
+                        c.Request.URL.Path, 
+                        context, 
+                        err)
+        }</span>
+}
+
+// TaskHandler タスク関連のHTTPハンドラ
+type TaskHandler struct {
+        taskService service.TaskService
+        validator   *validator.Validate
+}
+
+// NewTaskHandler TaskHandlerの新しいインスタンスを作成
+func NewTaskHandler(taskService service.TaskService) *TaskHandler <span class="cov8" title="1">{
+        return &amp;TaskHandler{
+                taskService: taskService,
+                validator:   validator.New(),
+        }
+}</span>
+
+// CreateTaskRequest タスク作成リクエスト構造体
+type CreateTaskRequest struct {
+        ColumnID    uint    `json:"column_id" validate:"required"`
+        Title       string  `json:"title" validate:"required,min=1,max=100"`
+        Description string  `json:"description"`
+        Order       int     `json:"order" validate:"min=1"`
+        AssigneeID  *string `json:"assignee_id"`
+        DueDate     *string `json:"due_date"`
+}
+
+// UpdateTaskRequest タスク更新リクエスト構造体
+type UpdateTaskRequest struct {
+        Title       *string `json:"title" validate:"omitempty,min=1,max=100"`
+        Description *string `json:"description"`
+        AssigneeID  *string `json:"assignee_id"`
+        DueDate     *string `json:"due_date"`
+}
+
+// MoveTaskRequest タスク移動リクエスト構造体
+type MoveTaskRequest struct {
+        NewColumnID uint `json:"new_column_id" validate:"required"`
+        NewOrder    int  `json:"new_order" validate:"min=1"`
+}
+
+// ReorderTasksRequest タスク順序変更リクエスト構造体
+type ReorderTasksRequest struct {
+        TaskIDs []uint `json:"task_ids" validate:"required"`
+}
+
+// CreateTask タスク作成ハンドラ
+// POST /api/v1/tasks
+func (h *TaskHandler) CreateTask(c *gin.Context) <span class="cov0" title="0">{
+        // JWT認証ミドルウェアからユーザーIDを取得
+        userID, err := middleware.GetUserIDFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "error": "認証情報が取得できません",
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">var req CreateTaskRequest
+
+        // リクエストボディをバインド
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なリクエスト形式です",
+                })
+                return
+        }</span>
+
+        // バリデーション
+        <span class="cov0" title="0">if err := h.validator.Struct(req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error":   "バリデーションエラー",
+                        "details": err.Error(),
+                })
+                return
+        }</span>
+
+        // 担当者IDを解析（指定されている場合）
+        <span class="cov0" title="0">var assigneeID *uuid.UUID
+        if req.AssigneeID != nil &amp;&amp; *req.AssigneeID != "" </span><span class="cov0" title="0">{
+                parsed, err := uuid.Parse(*req.AssigneeID)
+                if err != nil </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusBadRequest, gin.H{
+                                "error": "不正な担当者IDです",
+                        })
+                        return
+                }</span>
+                <span class="cov0" title="0">assigneeID = &amp;parsed</span>
+        }
+
+        // 期限日を解析（指定されている場合）
+        <span class="cov0" title="0">var dueDate *time.Time
+        if req.DueDate != nil &amp;&amp; *req.DueDate != "" </span><span class="cov0" title="0">{
+                parsed, err := time.Parse("2006-01-02", *req.DueDate)
+                if err != nil </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusBadRequest, gin.H{
+                                "error": "不正な期限日の形式です（YYYY-MM-DD形式で入力してください）",
+                        })
+                        return
+                }</span>
+                <span class="cov0" title="0">dueDate = &amp;parsed</span>
+        }
+
+        // タスク作成処理
+        <span class="cov0" title="0">task, err := h.taskService.CreateTask(req.ColumnID, userID, req.Title, req.Description, req.Order, assigneeID, dueDate)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusForbidden, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        // レスポンスを構築
+        <span class="cov0" title="0">response := h.buildTaskResponse(task)
+        c.JSON(http.StatusCreated, gin.H{
+                "task": response,
+        })</span>
+}
+
+// GetTask タスク取得ハンドラ
+// GET /api/v1/tasks/:id
+func (h *TaskHandler) GetTask(c *gin.Context) <span class="cov0" title="0">{
+        // JWT認証ミドルウェアからユーザーIDを取得
+        userID, err := middleware.GetUserIDFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "error": "認証情報が取得できません",
+                })
+                return
+        }</span>
+
+        // パスパラメータからタスクIDを取得
+        <span class="cov0" title="0">taskIDStr := c.Param("id")
+        taskID, err := strconv.ParseUint(taskIDStr, 10, 32)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なタスクIDです",
+                })
+                return
+        }</span>
+
+        // タスクを取得
+        <span class="cov0" title="0">task, err := h.taskService.GetTask(uint(taskID), userID)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusForbidden, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        // レスポンスを構築
+        <span class="cov0" title="0">response := h.buildTaskResponse(task)
+        c.JSON(http.StatusOK, response)</span>
+}
+
+// UpdateTask タスク更新ハンドラ
+// PUT /api/v1/tasks/:id
+func (h *TaskHandler) UpdateTask(c *gin.Context) <span class="cov8" title="1">{
+        debugLog("UpdateTask開始")
+        
+        // JWT認証ミドルウェアからユーザーIDを取得
+        userID, err := middleware.GetUserIDFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                debugError(c, err, "ユーザーID取得")
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "error": "認証情報が取得できません",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">debugLog("認証成功 - ユーザーID: %s", userID)
+
+        // パスパラメータからタスクIDを取得
+        taskIDStr := c.Param("id")
+        taskID, err := strconv.ParseUint(taskIDStr, 10, 32)
+        if err != nil </span><span class="cov0" title="0">{
+                debugError(c, err, "タスクIDパース")
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なタスクIDです",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">debugLog("タスクID: %d", taskID)
+
+        var req UpdateTaskRequest
+
+        // リクエストボディをバインド
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov8" title="1">{
+                // デバッグ用：リクエストボディを出力
+                if gin.Mode() == gin.DebugMode </span><span class="cov0" title="0">{
+                        body, _ := c.GetRawData()
+                        log.Printf("[DEBUG] Raw request body: %s", string(body))
+                }</span>
+                <span class="cov8" title="1">debugError(c, err, "JSONバインド")
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error":   "不正なリクエスト形式です",
+                        "details": err.Error(),
+                })
+                return</span>
+        }
+
+        <span class="cov8" title="1">debugRequest(c, req)
+
+        // バリデーション
+        if err := h.validator.Struct(req); err != nil </span><span class="cov8" title="1">{
+                debugError(c, err, "バリデーション")
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error":   "バリデーションエラー",
+                        "details": err.Error(),
+                })
+                return
+        }</span>
+
+        // 更新データを構築
+        <span class="cov8" title="1">updates := make(map[string]interface{})
+        if req.Title != nil </span><span class="cov8" title="1">{
+                updates["title"] = *req.Title
+                debugLog("タイトル更新: %s", *req.Title)
+        }</span>
+        <span class="cov8" title="1">if req.Description != nil </span><span class="cov8" title="1">{
+                updates["description"] = *req.Description
+                debugLog("説明更新: %s", *req.Description)
+        }</span>
+        <span class="cov8" title="1">if req.AssigneeID != nil </span><span class="cov0" title="0">{
+                if *req.AssigneeID == "" </span><span class="cov0" title="0">{
+                        updates["assignee_id"] = nil
+                        debugLog("担当者をクリア")
+                }</span> else<span class="cov0" title="0"> {
+                        updates["assignee_id"] = *req.AssigneeID
+                        debugLog("担当者更新: %s", *req.AssigneeID)
+                }</span>
+        }
+        <span class="cov8" title="1">if req.DueDate != nil </span><span class="cov8" title="1">{
+                if *req.DueDate == "" </span><span class="cov0" title="0">{
+                        // 空文字列の場合はnullに設定
+                        updates["due_date"] = nil
+                        debugLog("期限日をクリア")
+                }</span> else<span class="cov8" title="1"> {
+                        // 文字列をtime.Time型に変換（YYYY-MM-DD形式）
+                        parsed, err := time.Parse("2006-01-02", *req.DueDate)
+                        if err != nil </span><span class="cov0" title="0">{
+                                debugError(c, err, "日付パース")
+                                c.JSON(http.StatusBadRequest, gin.H{
+                                        "error": "不正な期限日の形式です（YYYY-MM-DD形式で入力してください）",
+                                })
+                                return
+                        }</span>
+                        <span class="cov8" title="1">updates["due_date"] = parsed
+                        debugLog("期限日更新: %s", parsed.Format("2006-01-02"))</span>
+                }
+        }
+
+        <span class="cov8" title="1">debugLog("更新データ: %+v", updates)
+
+        // タスク更新処理
+        task, err := h.taskService.UpdateTask(uint(taskID), userID, updates)
+        if err != nil </span><span class="cov0" title="0">{
+                debugError(c, err, "タスク更新")
+                c.JSON(http.StatusForbidden, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">debugLog("タスク更新成功: %+v", task)
+
+        // レスポンスを構築
+        response := h.buildTaskResponse(task)
+        c.JSON(http.StatusOK, response)</span>
+}
+
+// DeleteTask タスク削除ハンドラ
+// DELETE /api/v1/tasks/:id
+func (h *TaskHandler) DeleteTask(c *gin.Context) <span class="cov0" title="0">{
+        // JWT認証ミドルウェアからユーザーIDを取得
+        userID, err := middleware.GetUserIDFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "error": "認証情報が取得できません",
+                })
+                return
+        }</span>
+
+        // パスパラメータからタスクIDを取得
+        <span class="cov0" title="0">taskIDStr := c.Param("id")
+        taskID, err := strconv.ParseUint(taskIDStr, 10, 32)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なタスクIDです",
+                })
+                return
+        }</span>
+
+        // タスク削除処理
+        <span class="cov0" title="0">if err := h.taskService.DeleteTask(uint(taskID), userID); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusForbidden, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">c.JSON(http.StatusNoContent, nil)</span>
+}
+
+// MoveTask タスク移動ハンドラ
+// PUT /api/v1/tasks/:id/move
+func (h *TaskHandler) MoveTask(c *gin.Context) <span class="cov0" title="0">{
+        // JWT認証ミドルウェアからユーザーIDを取得
+        userID, err := middleware.GetUserIDFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "error": "認証情報が取得できません",
+                })
+                return
+        }</span>
+
+        // パスパラメータからタスクIDを取得
+        <span class="cov0" title="0">taskIDStr := c.Param("id")
+        taskID, err := strconv.ParseUint(taskIDStr, 10, 32)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なタスクIDです",
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">var req MoveTaskRequest
+
+        // リクエストボディをバインド
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なリクエスト形式です",
+                })
+                return
+        }</span>
+
+        // バリデーション
+        <span class="cov0" title="0">if err := h.validator.Struct(req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error":   "バリデーションエラー",
+                        "details": err.Error(),
+                })
+                return
+        }</span>
+
+        // タスク移動処理
+        <span class="cov0" title="0">if err := h.taskService.MoveTask(uint(taskID), req.NewColumnID, req.NewOrder, userID); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusForbidden, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">c.JSON(http.StatusOK, gin.H{
+                "message": "タスクが正常に移動されました",
+        })</span>
+}
+
+// ReorderTasks タスク順序変更ハンドラ
+// PUT /api/v1/columns/:columnId/tasks/reorder
+func (h *TaskHandler) ReorderTasks(c *gin.Context) <span class="cov0" title="0">{
+        // JWT認証ミドルウェアからユーザーIDを取得
+        userID, err := middleware.GetUserIDFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "error": "認証情報が取得できません",
+                })
+                return
+        }</span>
+
+        // パスパラメータからカラムIDを取得
+        <span class="cov0" title="0">columnIDStr := c.Param("columnId")
+        columnID, err := strconv.ParseUint(columnIDStr, 10, 32)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なカラムIDです",
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">var req ReorderTasksRequest
+
+        // リクエストボディをバインド
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "不正なリクエスト形式です",
+                })
+                return
+        }</span>
+
+        // バリデーション
+        <span class="cov0" title="0">if err := h.validator.Struct(req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error":   "バリデーションエラー",
+                        "details": err.Error(),
+                })
+                return
+        }</span>
+
+        // タスク順序変更処理
+        <span class="cov0" title="0">if err := h.taskService.ReorderTasks(uint(columnID), req.TaskIDs, userID); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusForbidden, gin.H{
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov0" title="0">c.JSON(http.StatusOK, gin.H{
+                "message": "タスクの順序が正常に更新されました",
+        })</span>
+}
+
+// buildTaskResponse タスクレスポンスを構築するヘルパー関数
+func (h *TaskHandler) buildTaskResponse(task *domain.Task) TaskResponse <span class="cov8" title="1">{
+        response := TaskResponse{
+                ID:          task.ID,
+                Title:       task.Title,
+                Description: task.Description,
+                Order:       task.Order,
+                DueDate:     task.DueDate,
+                CreatedAt:   task.CreatedAt,
+                UpdatedAt:   task.UpdatedAt,
+        }
+
+        // 担当者情報が存在する場合は追加
+        if task.AssigneeID != nil </span><span class="cov0" title="0">{
+                assigneeIDStr := task.AssigneeID.String()
+                response.AssigneeID = &amp;assigneeIDStr
+        }</span>
+        <span class="cov8" title="1">if task.Assignee != nil </span><span class="cov0" title="0">{
+                response.Assignee = &amp;UserResponse{
+                        ID:    task.Assignee.ID.String(),
+                        Email: task.Assignee.Email,
+                }
+        }</span>
+
+        <span class="cov8" title="1">return response</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

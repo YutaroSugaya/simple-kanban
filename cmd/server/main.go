@@ -27,7 +27,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("データベース接続エラー: %v", err)
 	}
-	defer repository.CloseDB()
+	defer func() {
+		if err := repository.CloseDB(); err != nil {
+			log.Printf("データベース接続終了エラー: %v", err)
+		}
+	}()
 
 	// データベースマイグレーションを実行
 	if err := repository.Migrate(db); err != nil {
