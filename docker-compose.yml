@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQLデータベース
   db:
@@ -51,4 +49,4 @@ volumes:
 
 networks:
   default:
-    name: simple-kanban-network 
+    name: simple-kanban-network

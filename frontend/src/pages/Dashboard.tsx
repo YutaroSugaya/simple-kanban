@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { boardApi } from '../lib/api';
+import { boardApi, analyticsApi } from '../lib/api';
 import * as Types from '../types';
 import { useForm } from 'react-hook-form';
+import ActivityHeatmap from '../components/ActivityHeatmap';
 
 /**
  * ダッシュボード（ボード一覧）ページコンポーネント
@@ -11,6 +12,7 @@ import { useForm } from 'react-hook-form';
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const [boards, setBoards] = useState<Types.Board[]>([]);
+  const [activityData, setActivityData] = useState<{ date: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -23,34 +25,48 @@ const Dashboard: React.FC = () => {
     formState: { errors },
   } = useForm<Types.CreateBoardRequest>();
 
-  // ボード一覧の取得
-  const fetchBoards = async () => {
+  // ボード一覧とアクティビティデータの取得
+  const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching boards...'); // デバッグログ
-      const data = await boardApi.getBoards();
-      console.log('Boards data received:', data); // デバッグログ
+      console.log('Fetching boards and activity data...'); // デバッグログ
+      
+      const [boardsData, activityStatsData] = await Promise.all([
+        boardApi.getBoards(),
+        analyticsApi.getTaskCompletionStats()
+      ]);
+      
+      console.log('Boards data received:', boardsData); // デバッグログ
+      console.log('Activity data received:', activityStatsData); // デバッグログ
       
       // データが配列であることを確認
-      if (Array.isArray(data)) {
-        setBoards(data);
+      if (Array.isArray(boardsData)) {
+        setBoards(boardsData);
       } else {
-        console.error('Boards data is not an array:', data);
+        console.error('Boards data is not an array:', boardsData);
         setBoards([]);
         setError('ボードデータの形式が正しくありません');
       }
+
+      if (Array.isArray(activityStatsData)) {
+        setActivityData(activityStatsData);
+      } else {
+        console.error('Activity data is not an array:', activityStatsData);
+        setActivityData([]);
+      }
     } catch (error: any) {
-      console.error('Error fetching boards:', error); // デバッグログ
-      setError(error.response?.data?.error || 'ボードの取得に失敗しました');
+      console.error('Error fetching data:', error); // デバッグログ
+      setError(error.response?.data?.error || 'データの取得に失敗しました');
       setBoards([]); // エラーが発生した場合も空配列に設定
+      setActivityData([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchBoards();
+    fetchData();
   }, []);
 
   // ボード作成
@@ -118,6 +134,18 @@ const Dashboard: React.FC = () => {
               <span className="text-sm text-gray-600">
                 こんにちは、{user?.email}さん
               </span>
+              <Link
+                to="/calendar"
+                className="text-sm text-gray-600 hover:text-gray-800"
+              >
+                カレンダー
+              </Link>
+              <Link
+                to="/settings"
+                className="text-sm text-gray-600 hover:text-gray-800"
+              >
+                設定
+              </Link>
               <button
                 onClick={logout}
                 className="text-sm text-gray-600 hover:text-gray-800"
@@ -132,6 +160,11 @@ const Dashboard: React.FC = () => {
       {/* メインコンテンツ */}
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
+          {/* アクティビティヒートマップ */}
+          <div className="mb-8">
+            <ActivityHeatmap data={activityData} />
+          </div>
+
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">マイボード</h2>
             <button

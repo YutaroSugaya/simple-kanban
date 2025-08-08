@@ -65,6 +65,12 @@ type CreateTaskRequest struct {
 	Order       int     `json:"order" validate:"min=1"`
 	AssigneeID  *string `json:"assignee_id"`
 	DueDate     *string `json:"due_date"`
+	// 新機能用フィールド
+	EstimatedTime  *int    `json:"estimated_time"`  // 目標時間（分）
+	IsCompleted    *bool   `json:"is_completed"`    // 完了状態
+	ScheduledStart *string `json:"scheduled_start"` // スケジュール開始時刻
+	ScheduledEnd   *string `json:"scheduled_end"`   // スケジュール終了時刻
+	CalendarDate   *string `json:"calendar_date"`   // カレンダー配置日
 }
 
 // UpdateTaskRequest タスク更新リクエスト構造体
@@ -73,6 +79,12 @@ type UpdateTaskRequest struct {
 	Description *string `json:"description"`
 	AssigneeID  *string `json:"assignee_id"`
 	DueDate     *string `json:"due_date"`
+	// 新機能用フィールド
+	EstimatedTime  *int    `json:"estimated_time"`  // 目標時間（分）
+	IsCompleted    *bool   `json:"is_completed"`    // 完了状態
+	ScheduledStart *string `json:"scheduled_start"` // スケジュール開始時刻
+	ScheduledEnd   *string `json:"scheduled_end"`   // スケジュール終了時刻
+	CalendarDate   *string `json:"calendar_date"`   // カレンダー配置日
 }
 
 // MoveTaskRequest タスク移動リクエスト構造体
@@ -192,7 +204,9 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 
 	// レスポンスを構築
 	response := h.buildTaskResponse(task)
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{
+		"task": response,
+	})
 }
 
 // UpdateTask タスク更新ハンドラ

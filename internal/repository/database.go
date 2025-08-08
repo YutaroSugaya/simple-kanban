@@ -66,6 +66,9 @@ func Migrate(db *gorm.DB) error {
 		&domain.Board{},
 		&domain.Column{},
 		&domain.Task{},
+		&domain.CalendarSettings{},
+		&domain.TimerSession{},
+		&domain.CalendarEvent{},
 	)
 	if err != nil {
 		return fmt.Errorf("マイグレーションに失敗しました: %w", err)

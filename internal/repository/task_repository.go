@@ -3,6 +3,7 @@ package repository
 import (
 	"simple-kanban/internal/domain"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -11,6 +12,7 @@ type TaskRepository interface {
 	Create(task *domain.Task) error
 	GetByID(id uint) (*domain.Task, error)
 	GetByColumnID(columnID uint) ([]domain.Task, error)
+	GetTasksByUserID(userID uuid.UUID) ([]domain.Task, error)
 	Update(task *domain.Task) error
 	Delete(id uint) error
 	UpdateOrder(id uint, newOrder int) error
@@ -61,6 +63,16 @@ func (r *taskRepository) GetByID(id uint) (*domain.Task, error) {
 func (r *taskRepository) GetByColumnID(columnID uint) ([]domain.Task, error) {
 	var tasks []domain.Task
 	result := r.db.Preload("Assignee").Where("column_id = ?", columnID).Order("\"order\" ASC").Find(&tasks)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return tasks, nil
+}
+
+// GetTasksByUserID ユーザーIDでタスク一覧を取得します
+func (r *taskRepository) GetTasksByUserID(userID uuid.UUID) ([]domain.Task, error) {
+	var tasks []domain.Task
+	result := r.db.Preload("Column").Preload("Assignee").Where("assignee_id = ?", userID).Order("\"order\" ASC").Find(&tasks)
 	if result.Error != nil {
 		return nil, result.Error
 	}

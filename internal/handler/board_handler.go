@@ -341,3 +341,94 @@ func (h *BoardHandler) DeleteBoard(c *gin.Context) {
 
 	c.JSON(http.StatusNoContent, nil)
 }
+
+// GetUserBoardsWithColumns ユーザーのボード一覧をカラム・タスク情報付きで取得
+// GET /api/v1/boards/with-columns
+func (h *BoardHandler) GetUserBoardsWithColumns(c *gin.Context) {
+	// JWT認証ミドルウェアからユーザーIDを取得
+	userID, err := middleware.GetUserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "認証情報が取得できません",
+		})
+		return
+	}
+
+	// ユーザーのボード一覧を取得
+	boards, err := h.boardService.GetUserBoards(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// レスポンスを構築
+	var response []BoardResponse
+	for _, board := range boards {
+		// 各ボードのカラム・タスク情報を取得
+		boardWithColumns, err := h.boardService.GetBoardWithColumns(board.ID, userID)
+		if err != nil {
+			// エラーが発生した場合は、カラム情報なしでボード情報のみを追加
+			response = append(response, BoardResponse{
+				ID:        board.ID,
+				Name:      board.Name,
+				OwnerID:   board.OwnerID.String(),
+				CreatedAt: board.CreatedAt,
+				UpdatedAt: board.UpdatedAt,
+			})
+			continue
+		}
+
+		// カラム情報を構築
+		var columns []ColumnResponse
+		for _, column := range boardWithColumns.Columns {
+			var tasks []TaskResponse
+			for _, task := range column.Tasks {
+				taskResponse := TaskResponse{
+					ID:          task.ID,
+					Title:       task.Title,
+					Description: task.Description,
+					Order:       task.Order,
+					DueDate:     task.DueDate,
+					CreatedAt:   task.CreatedAt,
+					UpdatedAt:   task.UpdatedAt,
+				}
+
+				// 担当者情報が存在する場合は追加
+				if task.AssigneeID != nil {
+					assigneeIDStr := task.AssigneeID.String()
+					taskResponse.AssigneeID = &assigneeIDStr
+				}
+				if task.Assignee != nil {
+					taskResponse.Assignee = &UserResponse{
+						ID:    task.Assignee.ID.String(),
+						Email: task.Assignee.Email,
+					}
+				}
+
+				tasks = append(tasks, taskResponse)
+			}
+
+			columns = append(columns, ColumnResponse{
+				ID:    column.ID,
+				Title: column.Title,
+				Order: column.Order,
+				Tasks: tasks,
+			})
+		}
+
+		response = append(response, BoardResponse{
+			ID:        board.ID,
+			Name:      board.Name,
+			OwnerID:   board.OwnerID.String(),
+			CreatedAt: board.CreatedAt,
+			UpdatedAt: board.UpdatedAt,
+			Columns:   columns,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"boards": response,
+	})
+}
