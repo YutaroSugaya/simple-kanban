@@ -20,6 +20,8 @@ Go (Gin) + React を使用した高機能な Kanban ボード管理システム�
   - 縦型レイアウトで時間軸を表示
   - 平日・土日で異なる表示時間設定
   - タスクのドラッグ&ドロップでカレンダー配置
+  - イベント内の「✓/↺」でタスクの完了/未完了をトグル
+  - 完了タスクも表示（取り消し線 + 透明度で区別）
 
 - **⏱️ タイマー機能**: ポモドーロテクニック対応
 
@@ -32,7 +34,7 @@ Go (Gin) + React を使用した高機能な Kanban ボード管理システム�
 
   - 目標時間の設定（分単位）
   - 実際の作業時間の自動計算
-  - 完了状態の管理とビジュアル表示
+  - 完了状態の管理とビジュアル表示（タスクカード右上のチェックでトグル可能）
   - スケジュール情報の保存
 
 - **✅ 完了タスクの視覚表示**:
@@ -40,12 +42,14 @@ Go (Gin) + React を使用した高機能な Kanban ボード管理システム�
   - 完了時の斜線表示
   - 「Done」バッジの表示
   - 完了状態での透明度変更
+  - Done カラムをボード上で常に表示（最後尾）
 
 - **🌱 GitHub 草風アクティビティ**:
 
   - 年間のタスク完了状況を視覚化
   - 完了数に応じた色の濃淡表示
   - 統計情報の表示（総完了数、アクティブ日数など）
+  - 現行実装では 2025 年の完了アクティビティを表示
 
 - **⚙️ 設定画面**:
   - カレンダー表示時間のカスタマイズ
@@ -193,12 +197,15 @@ make dev-stop
 1. 「新しいボード」で Kanban ボードを作成
 2. ボードを開いてタスクを追加
 3. 目標時間や期限を設定
+4. 完了したタスクは Done カラムに移動可能／また、Done カラムにも常に表示されます
 
 ### 3. カレンダー機能の使用
 
 1. ヘッダーの「カレンダー」をクリック
 2. タスクをカレンダーにドラッグ&ドロップ
 3. 「日」「週」ボタンで表示切り替え
+4. イベント右側の「✓」で完了、「↺」で未完了に戻せます（即時反映）
+5. 完了タスクもカレンダー上に表示され、取り消し線と淡い色で区別されます
 
 ### 4. タイマー機能の使用
 
@@ -220,7 +227,7 @@ make dev-stop
 http://localhost:8080/api/v1
 ```
 
-### 新規 API エンドポイント
+### 新規/更新された API エンドポイント
 
 #### カレンダー関連
 
@@ -250,9 +257,11 @@ Content-Type: application/json
 **カレンダーイベント取得**
 
 ```http
-GET /api/v1/calendar/events?start=2024-01-01T00:00:00Z&end=2024-01-07T23:59:59Z
+GET /api/v1/calendar/events?start=2025-01-01T00:00:00Z&end=2025-01-07T23:59:59Z
 Authorization: Bearer <JWT_TOKEN>
 ```
+
+- タスクベースのイベント（`is_task_based: true`）は関連する `task` 情報を含みます。
 
 **タスクからカレンダーイベント作成**
 
@@ -262,10 +271,26 @@ Authorization: Bearer <JWT_TOKEN>
 Content-Type: application/json
 
 {
-  "start": "2024-01-15T10:00:00Z",
-  "end": "2024-01-15T11:00:00Z"
+  "start": "2025-01-15T10:00:00Z",
+  "end": "2025-01-15T11:00:00Z"
 }
 ```
+
+#### タスク関連
+
+**タスク更新（完了/未完了トグル）**
+
+```http
+PUT /api/v1/tasks/:id
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+
+{
+  "is_completed": true
+}
+```
+
+> 併せて `title`、`description`、`estimated_time`、`due_date`、`scheduled_start`、`scheduled_end`、`calendar_date` なども更新可能です。
 
 #### タイマー関連
 
@@ -298,12 +323,23 @@ Authorization: Bearer <JWT_TOKEN>
 
 #### 分析・統計
 
-**タスク完了統計取得**
+**タスク完了統計取得（日別）**
 
 ```http
-GET /api/v1/analytics/task-completion?year=2024
+GET /api/v1/analytics/task-completion?year=2025
 Authorization: Bearer <JWT_TOKEN>
 ```
+
+- レスポンス（配列形式）
+
+```json
+[
+  { "date": "2025-01-01", "count": 3 },
+  { "date": "2025-01-02", "count": 5 }
+]
+```
+
+> 指定年の期間内に「完了」へ更新されたタスクを日付ごとに集計して返します。
 
 ### 拡張されたタスク API
 
@@ -319,9 +355,11 @@ Content-Type: application/json
   "title": "新しいタスク",
   "description": "タスクの説明",
   "estimated_time": 60,
-  "due_date": "2024-12-31T23:59:59Z"
+  "due_date": "2025-12-31T23:59:59Z"
 }
 ```
+
+> ボードやカラム取得 API でも、タスクレスポンスに `estimated_time`、`actual_time`、`is_completed`、`scheduled_start`、`scheduled_end`、`calendar_date` が含まれます。
 
 ## 🗄️ データベーススキーマ
 
@@ -429,7 +467,7 @@ make db-start
 
 ### ダッシュボード
 
-- GitHub 草風のアクティビティ表示
+- GitHub 草風のアクティビティ表示（2025 年）
 - ボード一覧表示
 
 ### カレンダー表示
@@ -437,6 +475,7 @@ make db-start
 - 日単位・週間単位の切り替え
 - 10 分刻みの時間表示
 - タスクのドラッグ&ドロップ
+- イベントからの完了/未完了トグル
 
 ### タイマー機能
 
@@ -456,6 +495,6 @@ make db-start
 4. ブランチをプッシュ (`git push origin feature/amazing-feature`)
 5. プルリクエストを作成
 
-## �� ライセンス
+## 🧾 ライセンス
 
 MIT License
