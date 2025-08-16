@@ -281,18 +281,32 @@ const KanbanBoard: React.FC = () => {
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="flex space-x-6 overflow-x-auto pb-6">
             {board.columns && board.columns.length > 0 ? (
-              board.columns
-                .filter((column) => column.title.toLowerCase() !== 'done')
-                .sort((a, b) => a.order - b.order)
-                .map((column) => (
-                  <Column
-                    key={column.id}
-                    column={column}
-                    onTaskUpdate={handleTaskUpdate}
-                    onTaskDelete={handleTaskDelete}
-                    onTaskCreate={handleTaskCreate}
-                  />
-                ))
+              <>
+                {board.columns
+                  .filter((column) => column.title.toLowerCase() !== 'done')
+                  .sort((a, b) => a.order - b.order)
+                  .map((column) => (
+                    <Column
+                      key={column.id}
+                      column={column}
+                      onTaskUpdate={handleTaskUpdate}
+                      onTaskDelete={handleTaskDelete}
+                      onTaskCreate={handleTaskCreate}
+                    />
+                  ))}
+                {/* Done カラムを最後尾に表示 */}
+                {board.columns
+                  .filter((column) => column.title.toLowerCase() === 'done')
+                  .map((column) => (
+                    <Column
+                      key={column.id}
+                      column={column}
+                      onTaskUpdate={handleTaskUpdate}
+                      onTaskDelete={handleTaskDelete}
+                      onTaskCreate={handleTaskCreate}
+                    />
+                  ))}
+              </>
             ) : (
               <div className="flex-1 flex items-center justify-center py-12">
                 <div className="text-center text-gray-500">

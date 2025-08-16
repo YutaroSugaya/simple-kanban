@@ -256,7 +256,7 @@ export const analyticsApi = {
   getTaskCompletionStats: async (year?: number): Promise<{ date: string; count: number }[]> => {
     const params = year ? `?year=${year}` : '';
     const response = await api.get(`/analytics/task-completion${params}`);
-    return response.data;
+    return response.data as { date: string; count: number }[];
   },
 };
 

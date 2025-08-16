@@ -507,13 +507,20 @@ func (h *TaskHandler) ReorderTasks(c *gin.Context) {
 // buildTaskResponse タスクレスポンスを構築するヘルパー関数
 func (h *TaskHandler) buildTaskResponse(task *domain.Task) TaskResponse {
 	response := TaskResponse{
-		ID:          task.ID,
-		Title:       task.Title,
-		Description: task.Description,
-		Order:       task.Order,
-		DueDate:     task.DueDate,
-		CreatedAt:   task.CreatedAt,
-		UpdatedAt:   task.UpdatedAt,
+		ID:             task.ID,
+		ColumnID:       task.ColumnID,
+		Title:          task.Title,
+		Description:    task.Description,
+		Order:          task.Order,
+		DueDate:        task.DueDate,
+		EstimatedTime:  task.EstimatedTime,
+		ActualTime:     task.ActualTime,
+		IsCompleted:    task.IsCompleted,
+		ScheduledStart: task.ScheduledStart,
+		ScheduledEnd:   task.ScheduledEnd,
+		CalendarDate:   task.CalendarDate,
+		CreatedAt:      task.CreatedAt,
+		UpdatedAt:      task.UpdatedAt,
 	}
 
 	// 担当者情報が存在する場合は追加

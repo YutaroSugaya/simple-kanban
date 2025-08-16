@@ -33,7 +33,7 @@ const Dashboard: React.FC = () => {
       
       const [boardsData, activityStatsData] = await Promise.all([
         boardApi.getBoards(),
-        analyticsApi.getTaskCompletionStats()
+        analyticsApi.getTaskCompletionStats(2025)
       ]);
       
       // データが配列であることを確認

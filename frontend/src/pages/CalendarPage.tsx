@@ -272,7 +272,7 @@ const CalendarPage: React.FC = () => {
                                                 : selectedTask?.id === task.id 
                                                 ? 'bg-blue-50 border border-blue-300'
                                                 : 'bg-gray-50 hover:bg-gray-100'
-                                            }`}
+                                            } ${task.is_completed ? 'opacity-60 line-through' : ''}`}
                                             onClick={() => handleTaskClick(task)}
                                           >
                                             <div className="font-medium truncate">{task.title}</div>

@@ -126,9 +126,70 @@ func (s *taskService) UpdateTask(taskID uint, userID uuid.UUID, updates map[stri
 			if parsedDate, err := time.Parse(time.RFC3339, dateStr); err == nil {
 				task.DueDate = &parsedDate
 			}
+		} else if dateTime, ok := dueDate.(time.Time); ok {
+			d := dateTime
+			task.DueDate = &d
 		}
 	}
 
+	// 拡張フィールドの更新処理
+	if est, ok := updates["estimated_time"]; ok {
+		switch v := est.(type) {
+		case int:
+			val := v
+			task.EstimatedTime = &val
+		case int32:
+			val := int(v)
+			task.EstimatedTime = &val
+		case int64:
+			val := int(v)
+			task.EstimatedTime = &val
+		case float64:
+			val := int(v)
+			task.EstimatedTime = &val
+		}
+	}
+	if comp, ok := updates["is_completed"]; ok {
+		if v, ok := comp.(bool); ok {
+			task.IsCompleted = v
+		}
+	}
+	if startVal, ok := updates["scheduled_start"]; ok {
+		if startVal == nil {
+			task.ScheduledStart = nil
+		} else if sStr, ok := startVal.(string); ok {
+			if parsed, err := time.Parse(time.RFC3339, sStr); err == nil {
+				task.ScheduledStart = &parsed
+			}
+		} else if t, ok := startVal.(time.Time); ok {
+			tmp := t
+			task.ScheduledStart = &tmp
+		}
+	}
+	if endVal, ok := updates["scheduled_end"]; ok {
+		if endVal == nil {
+			task.ScheduledEnd = nil
+		} else if eStr, ok := endVal.(string); ok {
+			if parsed, err := time.Parse(time.RFC3339, eStr); err == nil {
+				task.ScheduledEnd = &parsed
+			}
+		} else if t, ok := endVal.(time.Time); ok {
+			tmp := t
+			task.ScheduledEnd = &tmp
+		}
+	}
+	if calDate, ok := updates["calendar_date"]; ok {
+		if calDate == nil {
+			task.CalendarDate = nil
+		} else if dStr, ok := calDate.(string); ok {
+			if parsed, err := time.Parse(time.RFC3339, dStr); err == nil {
+				task.CalendarDate = &parsed
+			}
+		} else if t, ok := calDate.(time.Time); ok {
+			tmp := t
+			task.CalendarDate = &tmp
+		}
+	}
 	// データベースに保存
 	if err := s.taskRepo.Update(task); err != nil {
 		return nil, fmt.Errorf("タスク更新エラー: %w", err)

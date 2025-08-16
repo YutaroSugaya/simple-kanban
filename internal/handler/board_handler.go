@@ -56,15 +56,22 @@ type ColumnResponse struct {
 
 // TaskResponse タスク情報レスポンス構造体
 type TaskResponse struct {
-	ID          uint          `json:"id"`
-	Title       string        `json:"title"`
-	Description string        `json:"description"`
-	Order       int           `json:"order"`
-	AssigneeID  *string       `json:"assignee_id"`
-	Assignee    *UserResponse `json:"assignee,omitempty"`
-	DueDate     *time.Time    `json:"due_date"`
-	CreatedAt   time.Time     `json:"created_at"`
-	UpdatedAt   time.Time     `json:"updated_at"`
+	ID             uint          `json:"id"`
+	ColumnID       uint          `json:"column_id"`
+	Title          string        `json:"title"`
+	Description    string        `json:"description"`
+	Order          int           `json:"order"`
+	AssigneeID     *string       `json:"assignee_id"`
+	Assignee       *UserResponse `json:"assignee,omitempty"`
+	DueDate        *time.Time    `json:"due_date"`
+	EstimatedTime  *int          `json:"estimated_time,omitempty"`
+	ActualTime     *int          `json:"actual_time,omitempty"`
+	IsCompleted    bool          `json:"is_completed"`
+	ScheduledStart *time.Time    `json:"scheduled_start,omitempty"`
+	ScheduledEnd   *time.Time    `json:"scheduled_end,omitempty"`
+	CalendarDate   *time.Time    `json:"calendar_date,omitempty"`
+	CreatedAt      time.Time     `json:"created_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
 }
 
 // CreateBoard ボード作成ハンドラ
@@ -196,13 +203,20 @@ func (h *BoardHandler) GetBoardWithColumns(c *gin.Context) {
 		var tasks []TaskResponse
 		for _, task := range column.Tasks {
 			taskResponse := TaskResponse{
-				ID:          task.ID,
-				Title:       task.Title,
-				Description: task.Description,
-				Order:       task.Order,
-				DueDate:     task.DueDate,
-				CreatedAt:   task.CreatedAt,
-				UpdatedAt:   task.UpdatedAt,
+				ID:             task.ID,
+				ColumnID:       task.ColumnID,
+				Title:          task.Title,
+				Description:    task.Description,
+				Order:          task.Order,
+				DueDate:        task.DueDate,
+				EstimatedTime:  task.EstimatedTime,
+				ActualTime:     task.ActualTime,
+				IsCompleted:    task.IsCompleted,
+				ScheduledStart: task.ScheduledStart,
+				ScheduledEnd:   task.ScheduledEnd,
+				CalendarDate:   task.CalendarDate,
+				CreatedAt:      task.CreatedAt,
+				UpdatedAt:      task.UpdatedAt,
 			}
 
 			// 担当者情報が存在する場合は追加
@@ -386,13 +400,20 @@ func (h *BoardHandler) GetUserBoardsWithColumns(c *gin.Context) {
 			var tasks []TaskResponse
 			for _, task := range column.Tasks {
 				taskResponse := TaskResponse{
-					ID:          task.ID,
-					Title:       task.Title,
-					Description: task.Description,
-					Order:       task.Order,
-					DueDate:     task.DueDate,
-					CreatedAt:   task.CreatedAt,
-					UpdatedAt:   task.UpdatedAt,
+					ID:             task.ID,
+					ColumnID:       task.ColumnID,
+					Title:          task.Title,
+					Description:    task.Description,
+					Order:          task.Order,
+					DueDate:        task.DueDate,
+					EstimatedTime:  task.EstimatedTime,
+					ActualTime:     task.ActualTime,
+					IsCompleted:    task.IsCompleted,
+					ScheduledStart: task.ScheduledStart,
+					ScheduledEnd:   task.ScheduledEnd,
+					CalendarDate:   task.CalendarDate,
+					CreatedAt:      task.CreatedAt,
+					UpdatedAt:      task.UpdatedAt,
 				}
 
 				// 担当者情報が存在する場合は追加

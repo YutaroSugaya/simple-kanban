@@ -156,13 +156,14 @@ export interface AppState {
 
 // カレンダー関連の型定義
 export interface CalendarEvent {
-  id: string;
+  id: number;
   task_id?: number;
-  title: string;
+  title: string; // ISO 8601 format
   start: string; // ISO 8601 format
   end: string;
   color?: string;
   is_task_based: boolean;
+  task?: Task; // サーバーから付与される関連タスク（任意）
 }
 
 export interface CalendarSettings {

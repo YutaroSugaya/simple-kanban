@@ -221,10 +221,10 @@ const Calendar: React.FC<CalendarProps> = ({ onTaskSelect, refreshKey, onTimerSt
   const completeTaskFromEvent = async (event: Types.CalendarEvent) => {
     if (!event.task_id) return;
     try {
-      await taskApi.updateTask(event.task_id, { is_completed: true });
-      // 完了後、イベントは非表示にするため再取得
+      const current = await taskApi.getTask(event.task_id);
+      await taskApi.updateTask(event.task_id, { is_completed: !current.is_completed });
+      // 再取得して反映（完了タスクも表示は継続）
       await fetchEvents();
-      // Done への移動はボード画面のロジックで反映（必要ならAPIで移動可能）
     } catch {
       // no-op
     }
@@ -469,12 +469,13 @@ const Calendar: React.FC<CalendarProps> = ({ onTaskSelect, refreshKey, onTimerSt
                           const heightSlots = Math.max(1, Math.ceil(eventDurationMinutes / slotDuration));
                           const heightPx = heightSlots * 48 - 4; // 48px per slot, 4px for margins
                           
+                          const isCompleted = !!(event as Types.CalendarEvent).task?.is_completed;
                           return (
                             <div
                               key={event.id}
                               className={`text-xs p-1 rounded mb-1 cursor-pointer relative ${
                                 event.is_task_based ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                              }`}
+                              } ${event.is_task_based && isCompleted ? 'opacity-60 line-through' : ''}`}
                               style={{ 
                                 height: event.is_task_based ? `${heightPx}px` : 'auto',
                                 zIndex: 10
@@ -490,12 +491,12 @@ const Calendar: React.FC<CalendarProps> = ({ onTaskSelect, refreshKey, onTimerSt
                                         e.stopPropagation();
                                         completeTaskFromEvent(event);
                                       }}
-                                      className="text-green-700 hover:text-green-900"
-                                      title="完了にする"
-                                      aria-label="complete-event"
+                                      className={`hover:text-green-900 ${ isCompleted ? 'text-gray-600' : 'text-green-700'}`}
+                                      title={isCompleted ? '未完了にする' : '完了にする'}
+                                      aria-label="toggle-complete-event"
                                       type="button"
                                     >
-                                      ✓
+                                      {isCompleted ? '↺' : '✓'}
                                     </button>
                                     <button
                                       onClick={(e) => {

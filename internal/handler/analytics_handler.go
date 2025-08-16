@@ -5,6 +5,8 @@ import (
 	"simple-kanban/pkg/middleware"
 	"time"
 
+	"simple-kanban/internal/repository"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -45,11 +47,9 @@ func (h *AnalyticsHandler) GetTaskCompletionStats(c *gin.Context) {
 		}
 	}
 
-	// 年の開始日と終了日を計算
 	startDate := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(year+1, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	// 日毎の完了タスク数を取得
 	stats, err := h.getTaskCompletionByDate(userID, startDate, endDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
@@ -60,23 +60,37 @@ func (h *AnalyticsHandler) GetTaskCompletionStats(c *gin.Context) {
 }
 
 // getTaskCompletionByDate 指定期間の日毎タスク完了数を取得
-func (h *AnalyticsHandler) getTaskCompletionByDate(userID interface{}, startDate, endDate time.Time) (interface{}, error) {
-	// TODO: 実際のデータベースからタスク完了統計を取得する実装
-	// 現在はダミーデータを返す
-	stats := map[string]interface{}{
-		"year":        startDate.Year(),
-		"total_tasks": 150,
-		"daily_stats": map[string]int{
-			"2024-01-01": 3,
-			"2024-01-02": 5,
-			"2024-01-03": 2,
-			// 他の日のデータ...
-		},
+func (h *AnalyticsHandler) getTaskCompletionByDate(userID interface{}, startDate, endDate time.Time) ([]map[string]interface{}, error) {
+	// DB から tasks と boards をJOINして、対象ユーザーのボード配下の完了タスクを日付ごとに集計
+	db := repository.GetDB()
+	type row struct {
+		Date  time.Time
+		Count int
 	}
-	return stats, nil
+	var rows []row
+	q := db.Table("tasks t").
+		Select("DATE(t.updated_at) as date, COUNT(*) as count").
+		Joins("JOIN columns c ON c.id = t.column_id").
+		Joins("JOIN boards b ON b.id = c.board_id").
+		Where("b.owner_id = ? AND t.is_completed = ? AND t.updated_at >= ? AND t.updated_at < ?", userID, true, startDate, endDate).
+		Group("DATE(t.updated_at)").
+		Order("DATE(t.updated_at)")
+	if err := q.Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	// 返却形式に整形
+	var result []map[string]interface{}
+	for _, r := range rows {
+		result = append(result, map[string]interface{}{
+			"date":  r.Date.Format("2006-01-02"),
+			"count": r.Count,
+		})
+	}
+	return result, nil
 }
 
-// TaskCompletionStats タスク完了統計のレスポンス
+// TaskCompletionStats タスク完了統計のレスポンス（未使用）
 type TaskCompletionStats struct {
 	Year       int            `json:"year"`
 	TotalTasks int            `json:"total_tasks"`
