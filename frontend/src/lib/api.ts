@@ -141,7 +141,11 @@ export const taskApi = {
   // タスク更新
   updateTask: async (id: number, data: Types.UpdateTaskRequest): Promise<Types.Task> => {
     const response = await api.put(`/tasks/${id}`, data);
-    return response.data.task;
+    // サーバー実装によってはラップなしで返る場合がある
+    const task = (response.data.task ?? response.data) as unknown as Types.Task;
+    // サーバーのTaskResponseにはcolumn_idが含まれないため、必要最小限のフィールドを補完
+    // 呼び出し側で元のtask.column_idを残す処理も併用
+    return task;
   },
 
   // タスク削除

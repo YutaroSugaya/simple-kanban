@@ -108,7 +108,10 @@ const CalendarPage: React.FC = () => {
 
     // カレンダーにドロップされた場合
     if (destination.droppableId.startsWith('calendar-slot-')) {
-      const [, , date, time] = destination.droppableId.split('-');
+      // droppableId 形式: "calendar-slot-YYYY-MM-DD-HH:MM"
+      const parts = destination.droppableId.split('-');
+      const time = parts[parts.length - 1];
+      const date = parts.slice(2, parts.length - 1).join('-');
       const taskId = parseInt(draggableId.replace('task-', ''));
       
       try {
@@ -128,8 +131,7 @@ const CalendarPage: React.FC = () => {
 
         await calendarApi.createEventFromTask(taskId, startDateTime.toISOString(), endDateTime.toISOString());
         
-        // 成功メッセージを表示
-        alert('タスクがカレンダーに追加されました！');
+        // 成功メッセージは非表示
         
         // カレンダーコンポーネントを強制再レンダリング
         setCalendarKey(prev => prev + 1);
@@ -139,16 +141,11 @@ const CalendarPage: React.FC = () => {
           setCalendarKey(prev => prev + 1);
         }, 1000);
       } catch (error: unknown) {
-        console.error('Failed to create event from task:', error);
         
         let errorMessage = 'タスクの追加に失敗しました';
         if (error && typeof error === 'object' && 'response' in error) {
           const axiosError = error as { response?: { data?: { error?: string }; status?: number }; message?: string };
-          console.error('Error details:', {
-            message: axiosError.message,
-            response: axiosError.response?.data,
-            status: axiosError.response?.status
-          });
+          
           
           if (axiosError.response?.data?.error) {
             errorMessage = axiosError.response.data.error;
@@ -233,7 +230,6 @@ const CalendarPage: React.FC = () => {
                 <div className="bg-white rounded-lg shadow-sm border p-4">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">タスク一覧</h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    タスクをクリック、または「+」ボタンで現在の時間にカレンダー追加<br/>
                     ドラッグ&ドロップで指定の時間に追加
                   </p>
                   
@@ -285,18 +281,7 @@ const CalendarPage: React.FC = () => {
                                                 予定: {task.estimated_time}分
                                               </div>
                                             )}
-                                            <div className="absolute top-1 right-1">
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleTaskClick(task);
-                                                }}
-                                                className="text-xs px-1 py-0.5 bg-green-500 text-white rounded hover:bg-green-600 opacity-75 hover:opacity-100"
-                                                title="カレンダーに追加"
-                                              >
-                                                +
-                                              </button>
-                                            </div>
+                                            {/* "+" ボタンは不要のため削除 */}
                                           </div>
                                         )}
                                       </Draggable>

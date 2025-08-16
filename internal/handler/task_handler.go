@@ -307,6 +307,43 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		}
 	}
 
+	// 追加フィールド: 目標時間・完了状態・スケジュール・カレンダー日
+	if req.EstimatedTime != nil {
+		updates["estimated_time"] = *req.EstimatedTime
+		debugLog("目標時間更新: %d", *req.EstimatedTime)
+	}
+	if req.IsCompleted != nil {
+		updates["is_completed"] = *req.IsCompleted
+		debugLog("完了状態更新: %v", *req.IsCompleted)
+	}
+	if req.ScheduledStart != nil {
+		if *req.ScheduledStart == "" {
+			updates["scheduled_start"] = nil
+			debugLog("スケジュール開始クリア")
+		} else if parsed, err := time.Parse(time.RFC3339, *req.ScheduledStart); err == nil {
+			updates["scheduled_start"] = parsed
+			debugLog("スケジュール開始更新: %s", parsed.Format(time.RFC3339))
+		}
+	}
+	if req.ScheduledEnd != nil {
+		if *req.ScheduledEnd == "" {
+			updates["scheduled_end"] = nil
+			debugLog("スケジュール終了クリア")
+		} else if parsed, err := time.Parse(time.RFC3339, *req.ScheduledEnd); err == nil {
+			updates["scheduled_end"] = parsed
+			debugLog("スケジュール終了更新: %s", parsed.Format(time.RFC3339))
+		}
+	}
+	if req.CalendarDate != nil {
+		if *req.CalendarDate == "" {
+			updates["calendar_date"] = nil
+			debugLog("カレンダー日付クリア")
+		} else if parsed, err := time.Parse(time.RFC3339, *req.CalendarDate); err == nil {
+			updates["calendar_date"] = parsed
+			debugLog("カレンダー日付更新: %s", parsed.Format(time.RFC3339))
+		}
+	}
+
 	debugLog("更新データ: %+v", updates)
 
 	// タスク更新処理

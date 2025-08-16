@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import * as Types from '../types';
-import { taskApi, timerApi } from '../lib/api';
+import { taskApi } from '../lib/api';
 import { useForm } from 'react-hook-form';
 import { format, parseISO } from 'date-fns';
 
@@ -45,10 +45,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdate, onDelete }) 
         due_date: data.due_date || undefined,
         estimated_time: data.estimated_time || undefined,
       });
-      onUpdate(updatedTask);
+      const taskWithColumnId = {
+        ...updatedTask,
+        column_id: updatedTask.column_id ?? task.column_id,
+      } as Types.Task;
+      onUpdate(taskWithColumnId);
       setIsEditing(false);
     } catch (error) {
-      console.error('タスクの更新に失敗しました:', error);
+      
     } finally {
       setLoading(false);
     }
@@ -61,24 +65,20 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdate, onDelete }) 
       const updatedTask = await taskApi.updateTask(task.id, {
         is_completed: !task.is_completed,
       });
-      onUpdate(updatedTask);
+      // サーバーからcolumn_idが返らない場合に備え補完
+      const taskWithColumnId = {
+        ...updatedTask,
+        column_id: updatedTask.column_id ?? task.column_id,
+      } as Types.Task;
+      onUpdate(taskWithColumnId);
     } catch (error) {
-      console.error('タスクの完了状態変更に失敗しました:', error);
+      
     } finally {
       setLoading(false);
     }
   };
 
-  // タイマー開始
-  const startTimer = async () => {
-    try {
-      const duration = (task.estimated_time || 25) * 60; // 分を秒に変換、デフォルト25分
-      await timerApi.startTimer(task.id, duration);
-      // タイマー開始成功を通知（必要に応じて）
-    } catch (error) {
-      console.error('タイマー開始に失敗しました:', error);
-    }
-  };
+  // タイマー開始（boards画面では使用しないが、将来の拡張のため残置可能）
 
   // タスク削除
   const handleDelete = async () => {
@@ -89,7 +89,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdate, onDelete }) 
       await taskApi.deleteTask(task.id);
       onDelete(task.id);
     } catch (error) {
-      console.error('タスクの削除に失敗しました:', error);
+      
     } finally {
       setLoading(false);
     }
@@ -223,17 +223,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdate, onDelete }) 
                     </svg>
                   </button>
                   
-                  {/* タイマー開始（完了していないタスクのみ） */}
-                  {!task.is_completed && (
-                    <button
-                      onClick={startTimer}
-                      className="text-gray-400 hover:text-blue-500"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </button>
-                  )}
+                  {/* ボード画面ではタイマーボタン非表示にする要件のため削除 */}
                   
                   <button
                     onClick={toggleEdit}

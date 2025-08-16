@@ -57,7 +57,7 @@ func (r *calendarEventRepository) GetByUserID(userID uuid.UUID) ([]*domain.Calen
 // GetByUserIDAndDateRange ユーザーIDと日付範囲でカレンダーイベントを取得します
 func (r *calendarEventRepository) GetByUserIDAndDateRange(userID uuid.UUID, start, end time.Time) ([]*domain.CalendarEvent, error) {
 	var events []*domain.CalendarEvent
-	err := r.db.Where("user_id = ? AND \"start\" >= ? AND \"end\" <= ?", userID, start, end).
+	err := r.db.Where("user_id = ? AND \"start\" < ? AND \"end\" > ?", userID, end, start).
 		Preload("User").Preload("Task").
 		Order("\"start\" ASC").
 		Find(&events).Error

@@ -53,12 +53,9 @@ const KanbanBoard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching board with ID:', parsedBoardId); // デバッグログ
       const data = await boardApi.getBoardById(parsedBoardId);
-      console.log('Board data received:', data); // デバッグログ
       setBoard(data);
     } catch (error: any) {
-      console.error('Board fetch error:', error); // デバッグログ
       setError(error.response?.data?.error || 'ボードの取得に失敗しました');
       if (error.response?.status === 404) {
         setTimeout(() => navigate('/'), 2000);
@@ -69,7 +66,6 @@ const KanbanBoard: React.FC = () => {
   };
 
   useEffect(() => {
-    console.log('useEffect triggered with boardId:', boardId); // デバッグログ
     fetchBoard();
   }, [boardId]);
 
@@ -88,7 +84,7 @@ const KanbanBoard: React.FC = () => {
       return;
     }
 
-    const taskId = parseInt(draggableId);
+    const taskId = parseInt(draggableId.replace('task-', ''));
     const sourceColumnId = parseInt(source.droppableId);
     const destinationColumnId = parseInt(destination.droppableId);
 
@@ -109,6 +105,7 @@ const KanbanBoard: React.FC = () => {
           destinationColumn.tasks.splice(destination.index, 0, {
             ...taskToMove,
             column_id: destinationColumnId,
+            order: destination.index + 1,
           });
 
           // 順序を更新（1ベースに変換）
@@ -127,34 +124,54 @@ const KanbanBoard: React.FC = () => {
         new_column_id: destinationColumnId,
         new_order: destination.index + 1, // 0ベースから1ベースに変換
       };
-      console.log('Sending move request:', { taskId, moveData });
       await taskApi.moveTask(taskId, moveData);
-      console.log('Move request successful');
     } catch (error) {
-      console.error('タスクの移動に失敗しました:', error);
-      console.error('Move request details:', {
-        taskId,
-        destinationColumnId,
-        'destination.index': destination.index,
-        'new_order': destination.index + 1
-      });
+      
       // エラーが発生した場合、データを再取得
       fetchBoard();
     }
   };
 
   // タスク更新時の処理
-  const handleTaskUpdate = (updatedTask: Types.Task) => {
-    if (board) {
-      const newBoard = { ...board };
-      const column = newBoard.columns?.find(col => col.id === updatedTask.column_id);
-      if (column && column.tasks) {
-        const taskIndex = column.tasks.findIndex(task => task.id === updatedTask.id);
-        if (taskIndex !== -1) {
-          column.tasks[taskIndex] = updatedTask;
-          setBoard(newBoard);
+  const handleTaskUpdate = async (updatedTask: Types.Task) => {
+    if (!board) return;
+    const newBoard = { ...board };
+
+    // 現在の所属カラムを特定
+    let currentColumn = newBoard.columns?.find(col => col.id === updatedTask.column_id)
+      || newBoard.columns?.find(col => col.tasks?.some(t => t.id === updatedTask.id));
+
+    // 通常の更新反映
+    if (currentColumn && currentColumn.tasks) {
+      const taskIndex = currentColumn.tasks.findIndex(task => task.id === updatedTask.id);
+      if (taskIndex !== -1) {
+        currentColumn.tasks[taskIndex] = { ...currentColumn.tasks[taskIndex], ...updatedTask } as Types.Task;
+      }
+    }
+
+    // 完了 → Done へ移動
+    if (updatedTask.is_completed) {
+      const doneColumn = newBoard.columns?.find(col => col.title.toLowerCase() === 'done');
+      if (doneColumn && currentColumn && currentColumn.id !== doneColumn.id) {
+        // 楽観的UI更新
+        if (currentColumn?.tasks) {
+          currentColumn.tasks = currentColumn.tasks.filter(t => t.id !== updatedTask.id);
+        }
+        if (!doneColumn.tasks) doneColumn.tasks = [];
+        const newOrder = (doneColumn.tasks?.length || 0) + 1;
+        doneColumn.tasks.push({ ...updatedTask, column_id: doneColumn.id, order: newOrder } as Types.Task);
+        setBoard(newBoard);
+
+        // サーバーに移動反映
+        try {
+          await taskApi.moveTask(updatedTask.id, { new_column_id: doneColumn.id, new_order: newOrder });
+        } catch {
+          // 失敗時は再取得で整合
+          fetchBoard();
         }
       }
+    } else {
+      setBoard(newBoard);
     }
   };
 
@@ -265,6 +282,7 @@ const KanbanBoard: React.FC = () => {
           <div className="flex space-x-6 overflow-x-auto pb-6">
             {board.columns && board.columns.length > 0 ? (
               board.columns
+                .filter((column) => column.title.toLowerCase() !== 'done')
                 .sort((a, b) => a.order - b.order)
                 .map((column) => (
                   <Column

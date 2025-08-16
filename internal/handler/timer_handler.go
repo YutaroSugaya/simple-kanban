@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"simple-kanban/internal/service"
 	"simple-kanban/pkg/middleware"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // TimerHandler タイマー関連のHTTPハンドラー
@@ -109,7 +111,17 @@ func (h *TimerHandler) GetActiveTimer(c *gin.Context) {
 
 	session, err := h.timerService.GetActiveTimer(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "アクティブなタイマーが見つかりません"})
+		// レコードが存在しない場合は200 + nullで返却（404にしない）
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusOK, nil)
+			return
+		}
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	if session == nil {
+		c.JSON(http.StatusOK, nil)
 		return
 	}
 

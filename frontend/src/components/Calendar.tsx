@@ -20,12 +20,6 @@ const Calendar: React.FC<CalendarProps> = ({ onTaskSelect, refreshKey, onTimerSt
     // 明示的に今日の日付を設定（タイムゾーンの問題を避ける）
     const now = new Date();
     const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    console.log('Calendar: 初期化 - 今日の日付', {
-      now: now.toISOString(),
-      todayLocal: todayLocal.toISOString(),
-      localString: now.toLocaleDateString('ja-JP'),
-      timeZoneOffset: now.getTimezoneOffset()
-    });
     return todayLocal;
   });
   const [view, setView] = useState<Types.CalendarView>('day');
@@ -39,11 +33,7 @@ const Calendar: React.FC<CalendarProps> = ({ onTaskSelect, refreshKey, onTimerSt
     // 現在選択されている日付をベースに範囲を計算
     // 日付オブジェクトを直接複製して、時間情報を正確に処理
     const baseDate = new Date(currentDate.getTime());
-    console.log('Calendar: 基準日付', {
-      original: currentDate.toISOString(),
-      base: baseDate.toISOString(),
-      localString: baseDate.toLocaleDateString('ja-JP')
-    });
+    
 
     if (view === 'day') {
       // その日の00:00:00から23:59:59まで（ローカルタイム）
@@ -53,15 +43,7 @@ const Calendar: React.FC<CalendarProps> = ({ onTaskSelect, refreshKey, onTimerSt
       const end = new Date(baseDate);
       end.setHours(23, 59, 59, 999);
 
-      console.log('Calendar: 日表示の日付範囲計算', {
-        currentDate: currentDate.toISOString(),
-        currentDateLocal: currentDate.toLocaleDateString('ja-JP'),
-        view,
-        start: start.toISOString(),
-        end: end.toISOString(),
-        startLocal: start.toLocaleString('ja-JP'),
-        endLocal: end.toLocaleString('ja-JP')
-      });
+      
 
       return { start, end };
     } else { // week
@@ -75,14 +57,7 @@ const Calendar: React.FC<CalendarProps> = ({ onTaskSelect, refreshKey, onTimerSt
       end.setDate(start.getDate() + 6);
       end.setHours(23, 59, 59, 999);
 
-      console.log('Calendar: 週表示の日付範囲計算', {
-        currentDate: currentDate.toISOString(),
-        view,
-        start: start.toISOString(),
-        end: end.toISOString(),
-        startLocal: start.toLocaleString('ja-JP'),
-        endLocal: end.toLocaleString('ja-JP')
-      });
+      
 
       return { start, end };
     }
@@ -91,54 +66,37 @@ const Calendar: React.FC<CalendarProps> = ({ onTaskSelect, refreshKey, onTimerSt
   // イベントデータの取得
   const fetchEvents = useCallback(async () => {
     const { start, end } = getDateRange();
-    console.log('Calendar: イベント取得リクエスト', {
-      start: start.toISOString(),
-      end: end.toISOString(),
-      currentDate: currentDate.toISOString(),
-      view
-    });
     try {
       const eventsData = await calendarApi.getEvents(start.toISOString(), end.toISOString());
-      console.log('Calendar: イベント取得成功', { count: eventsData.length, events: eventsData });
       setEvents(eventsData);
-    } catch (error) {
-      console.error('Failed to fetch events:', error);
+    } catch {
+      // no-op
     }
-  }, [getDateRange, currentDate, view]); // デバッグ用に依存配列を追加
+  }, [getDateRange]);
 
   // カレンダー設定とイベントの取得
   useEffect(() => {
     // 認証が完了していない場合は何もしない
-    if (authLoading || !isAuthenticated) {
-      console.log('Calendar: スキップ - 認証待機中またはログアウト状態', { authLoading, isAuthenticated });
-      return;
-    }
-
-    console.log('Calendar: データ取得開始', { currentDate, view, refreshKey });
+    if (authLoading || !isAuthenticated) return;
 
     const fetchData = async () => {
       try {
         setLoading(true);
         const settingsData = await calendarApi.getSettings();
         setSettings(settingsData);
-        console.log('Calendar: 設定取得成功');
         
         // アクティブタイマーを取得（404は既にapi.tsで処理済み）
         try {
           const timerData = await timerApi.getActiveTimer();
-          setActiveTimer(timerData); // nullまたはTimerSessionが返される
-          console.log('Calendar: タイマー取得成功', timerData ? 'アクティブタイマーあり' : 'アクティブタイマーなし');
-        } catch (timerError: unknown) {
-          // 404以外のエラー（認証エラーなど）の場合のみログ出力
-          console.error('Failed to fetch active timer:', timerError);
+          setActiveTimer(timerData);
+        } catch {
           setActiveTimer(null);
         }
         
         // イベントデータを取得
         await fetchEvents();
-        console.log('Calendar: イベント取得完了');
-      } catch (error) {
-        console.error('Failed to fetch calendar data:', error);
+      } catch {
+        // no-op
       } finally {
         setLoading(false);
       }
@@ -253,20 +211,38 @@ const Calendar: React.FC<CalendarProps> = ({ onTaskSelect, refreshKey, onTimerSt
       try {
         const task = await taskApi.getTask(event.task_id);
         onTaskSelect(task);
-      } catch (error) {
-        console.error('Failed to fetch task details:', error);
+      } catch {
+        // no-op
       }
+    }
+  };
+
+  // カレンダーのイベント操作（完了/削除）
+  const completeTaskFromEvent = async (event: Types.CalendarEvent) => {
+    if (!event.task_id) return;
+    try {
+      await taskApi.updateTask(event.task_id, { is_completed: true });
+      // 完了後、イベントは非表示にするため再取得
+      await fetchEvents();
+      // Done への移動はボード画面のロジックで反映（必要ならAPIで移動可能）
+    } catch {
+      // no-op
+    }
+  };
+
+  const deleteEvent = async (eventId?: number) => {
+    if (!eventId) return;
+    try {
+      await calendarApi.deleteEvent(eventId);
+      await fetchEvents();
+    } catch {
+      // no-op
     }
   };
 
   // 指定時間のイベントを取得（重複を除去して統合）
   const getEventsForSlot = (date: Date, timeSlot: Types.TimeSlot) => {
-    console.log('Calendar: スロットイベント取得', {
-      date: date.toISOString(),
-      timeSlot: timeSlot.time,
-      totalEvents: events.length,
-      events: events.map(e => ({ id: e.id, title: e.title, start: e.start, end: e.end }))
-    });
+    
     const slotStart = new Date(date);
     slotStart.setHours(timeSlot.hour, timeSlot.minute, 0, 0);
     const slotEnd = new Date(slotStart);
@@ -460,7 +436,11 @@ const Calendar: React.FC<CalendarProps> = ({ onTaskSelect, refreshKey, onTimerSt
               {/* 各日のタイムスロット */}
               {weekDays.map(day => {
                 const slotEvents = getEventsForSlot(day, timeSlot);
-                const slotId = `calendar-slot-${day.toISOString().split('T')[0]}-${timeSlot.time}`;
+                // ローカル日付キー (YYYY-MM-DD) を生成してUTC変換による日付ズレを防止
+                const dateKey = `${day.getFullYear()}-${(day.getMonth() + 1)
+                  .toString()
+                  .padStart(2, '0')}-${day.getDate().toString().padStart(2, '0')}`;
+                const slotId = `calendar-slot-${dateKey}-${timeSlot.time}`;
                 
                 return (
                   <Droppable key={slotId} droppableId={slotId}>
@@ -501,7 +481,37 @@ const Calendar: React.FC<CalendarProps> = ({ onTaskSelect, refreshKey, onTimerSt
                               }}
                               onClick={() => handleTaskClick(event)}
                             >
-                              <div className="font-medium truncate">{event.title}</div>
+                              <div className="font-medium truncate flex items-center justify-between">
+                                <span>{event.title}</span>
+                                {event.is_task_based && (
+                                  <div className="flex items-center gap-1 ml-2">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        completeTaskFromEvent(event);
+                                      }}
+                                      className="text-green-700 hover:text-green-900"
+                                      title="完了にする"
+                                      aria-label="complete-event"
+                                      type="button"
+                                    >
+                                      ✓
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        deleteEvent(Number(event.id));
+                                      }}
+                                      className="text-red-700 hover:text-red-900"
+                                      title="イベント削除"
+                                      aria-label="delete-event"
+                                      type="button"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                               {event.is_task_based && (
                                 <button
                                   onClick={(e) => {

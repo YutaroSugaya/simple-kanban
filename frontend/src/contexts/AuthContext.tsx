@@ -39,7 +39,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(userData);
         }
       } catch (error) {
-        console.error('認証の初期化エラー:', error);
         // トークンが無効な場合、削除する
         localStorage.removeItem('token');
         setToken(null);

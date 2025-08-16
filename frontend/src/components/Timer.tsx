@@ -18,38 +18,54 @@ const Timer: React.FC<TimerProps> = ({ task, onTimerComplete, onTimerStop, exter
   const [timeLeft, setTimeLeft] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [customDuration, setCustomDuration] = useState(25); // デフォルト25分
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentTaskId, setCurrentTaskId] = useState<number | undefined>(undefined);
 
   // アクティブタイマーの取得
   useEffect(() => {
-    const fetchActiveTimer = async () => {
+    (async () => {
       try {
         const timer = await timerApi.getActiveTimer();
         if (timer) {
           setActiveSession(timer);
           setIsRunning(true);
-          
-          // 残り時間を計算
+          setIsPaused(false);
+          setCurrentTaskId(timer.task_id);
           const elapsed = Math.floor((Date.now() - new Date(timer.start_time).getTime()) / 1000);
           const remaining = Math.max(0, timer.duration - elapsed);
           setTimeLeft(remaining);
         }
-      } catch (error) {
-        // 404エラー（アクティブなタイマーなし）は正常なケースなのでログは出力しない
-        if (error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'status' in error.response && error.response.status !== 404) {
-          console.error('Failed to fetch active timer:', error);
-        }
+      } catch {
+        // no-op
       }
-    };
-
-    fetchActiveTimer();
+    })();
   }, []);
 
   // 外部からのタイマー開始要求を処理
   useEffect(() => {
     if (externalTaskId && task && task.id === externalTaskId) {
-      startTimer();
+      // startTimer はこの useEffect より後で宣言されるため、直接呼ばずに同等処理を実行
+      const run = async () => {
+        const durationMinutes = task?.estimated_time || customDuration;
+        const duration = durationMinutes * 60;
+        const session = await timerApi.startTimer(task.id, duration);
+        setActiveSession(session);
+        setTimeLeft(duration);
+        setIsRunning(true);
+        setIsPaused(false);
+        setCurrentTaskId(task.id);
+        setCustomDuration(durationMinutes);
+      };
+      run();
     }
-  }, [externalTaskId]);
+  }, [externalTaskId, task, customDuration]);
+
+  // 選択タスクが変わったら記録
+  useEffect(() => {
+    if (task?.id) {
+      setCurrentTaskId(task.id);
+    }
+  }, [task?.id]);
 
   // タスクが変更されたときにデフォルト時間を更新
   useEffect(() => {
@@ -57,7 +73,7 @@ const Timer: React.FC<TimerProps> = ({ task, onTimerComplete, onTimerStop, exter
       setCustomDuration(task.estimated_time);
       setTimeLeft(task.estimated_time * 60);
     }
-  }, [task?.estimated_time, isRunning]);
+  }, [task, isRunning]);
 
   // タイマーカウントダウン
   useEffect(() => {
@@ -82,51 +98,63 @@ const Timer: React.FC<TimerProps> = ({ task, onTimerComplete, onTimerStop, exter
 
   // タイマー開始
   const startTimer = useCallback(async () => {
-    if (!task) return;
+    if (!task && !currentTaskId) return;
 
     try {
       // タスクの目標時間があれば使用、なければカスタム時間を使用
-      const durationMinutes = task.estimated_time || customDuration;
+      const durationMinutes = task?.estimated_time || customDuration;
       const duration = durationMinutes * 60; // 分を秒に変換
       
-      const session = await timerApi.startTimer(task.id, duration);
+      const session = await timerApi.startTimer(task ? task.id : (currentTaskId as number), duration);
       setActiveSession(session);
       setTimeLeft(duration);
       setIsRunning(true);
+      setIsPaused(false);
+      setCurrentTaskId(task ? task.id : currentTaskId);
       
       // カスタム時間も更新
       setCustomDuration(durationMinutes);
     } catch (error) {
       console.error('Failed to start timer:', error);
     }
-  }, [task, customDuration]);
+  }, [task, customDuration, currentTaskId]);
 
   // タイマー停止
-  const stopTimer = useCallback(async () => {
+  const pauseTimer = useCallback(async () => {
     if (!activeSession) return;
 
     try {
       const stoppedSession = await timerApi.stopTimer(activeSession.id!);
       const actualDuration = stoppedSession.duration;
-      
+      // timeLeft は減り続けているのでそのまま保持
       setActiveSession(null);
       setIsRunning(false);
-      setTimeLeft(0);
-      
+      setIsPaused(true);
       onTimerStop?.(actualDuration);
     } catch (error) {
       console.error('Failed to stop timer:', error);
     }
   }, [activeSession, onTimerStop]);
 
+  const resumeTimer = useCallback(async () => {
+    if (!currentTaskId || timeLeft <= 0) return;
+    try {
+      const session = await timerApi.startTimer(currentTaskId, timeLeft);
+      setActiveSession(session);
+      setIsRunning(true);
+      setIsPaused(false);
+    } catch (error) {
+      console.error('Failed to resume timer:', error);
+    }
+  }, [currentTaskId, timeLeft]);
+
   // タイマーリセット
   const resetTimer = useCallback(() => {
-    if (isRunning) {
-      stopTimer();
-    } else {
-      setTimeLeft(customDuration * 60);
-    }
-  }, [isRunning, stopTimer, customDuration]);
+    setIsRunning(false);
+    setIsPaused(false);
+    setActiveSession(null);
+    setTimeLeft(customDuration * 60);
+  }, [customDuration]);
 
   // 時間フォーマット関数
   const formatTime = (seconds: number): string => {
@@ -214,16 +242,25 @@ const Timer: React.FC<TimerProps> = ({ task, onTimerComplete, onTimerStop, exter
       {/* 操作ボタン */}
       <div className="mt-4 flex justify-center space-x-2">
         {!isRunning ? (
-          <button
-            onClick={startTimer}
-            disabled={!task}
-            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors text-sm"
-          >
-            開始
-          </button>
+          isPaused && timeLeft > 0 ? (
+            <button
+              onClick={resumeTimer}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium transition-colors text-sm"
+            >
+              再開
+            </button>
+          ) : (
+            <button
+              onClick={startTimer}
+              disabled={!task && !currentTaskId}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors text-sm"
+            >
+              開始
+            </button>
+          )
         ) : (
           <button
-            onClick={stopTimer}
+            onClick={pauseTimer}
             className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium transition-colors text-sm"
           >
             一時停止

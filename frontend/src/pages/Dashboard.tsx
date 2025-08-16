@@ -30,21 +30,16 @@ const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching boards and activity data...'); // デバッグログ
       
       const [boardsData, activityStatsData] = await Promise.all([
         boardApi.getBoards(),
         analyticsApi.getTaskCompletionStats()
       ]);
       
-      console.log('Boards data received:', boardsData); // デバッグログ
-      console.log('Activity data received:', activityStatsData); // デバッグログ
-      
       // データが配列であることを確認
       if (Array.isArray(boardsData)) {
         setBoards(boardsData);
       } else {
-        console.error('Boards data is not an array:', boardsData);
         setBoards([]);
         setError('ボードデータの形式が正しくありません');
       }
@@ -52,11 +47,9 @@ const Dashboard: React.FC = () => {
       if (Array.isArray(activityStatsData)) {
         setActivityData(activityStatsData);
       } else {
-        console.error('Activity data is not an array:', activityStatsData);
         setActivityData([]);
       }
     } catch (error: any) {
-      console.error('Error fetching data:', error); // デバッグログ
       setError(error.response?.data?.error || 'データの取得に失敗しました');
       setBoards([]); // エラーが発生した場合も空配列に設定
       setActivityData([]);
@@ -73,25 +66,19 @@ const Dashboard: React.FC = () => {
   const onSubmit = async (data: Types.CreateBoardRequest) => {
     try {
       setCreating(true);
-      console.log('Creating board with data:', data); // デバッグログ
       const newBoard = await boardApi.createBoard(data);
-      console.log('New board received:', newBoard); // デバッグログ
-      
       // newBoardが正しいデータ構造を持っているかチェック
       if (newBoard && typeof newBoard === 'object' && 'id' in newBoard && 'name' in newBoard) {
         setBoards(prevBoards => {
           const updatedBoards = [...(prevBoards || []), newBoard];
-          console.log('Updated boards:', updatedBoards); // デバッグログ
           return updatedBoards;
         });
         setShowCreateModal(false);
         reset();
       } else {
-        console.error('Invalid board data received:', newBoard);
         setError('ボードの作成に失敗しました：無効なデータが返されました');
       }
     } catch (error: any) {
-      console.error('Board creation error:', error); // デバッグログ
       setError(error.response?.data?.error || 'ボードの作成に失敗しました');
     } finally {
       setCreating(false);
